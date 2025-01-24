@@ -1,0 +1,55 @@
+# Byte-compiled and cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Logs and tracing
+logs/
+*.log
+langsmith_traces/
+
+# Data files
+data/*.db
+data/*.sqlite
+data/*.sql
+
+# Notebooks
+*.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+*.venv
+ENV/
+env/
+.venv/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE-specific files
+.vscode/
+.idea/
+*.swp
+
+# Test outputs
+*.pytest_cache/
+coverage/
+.coverage
+.cache/
+
+# Compiled code
+*.so
+*.dll
+*.dylib
+
+# Miscellaneous
+*.bak
+

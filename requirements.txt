@@ -1,0 +1,32 @@
+# Core dependencies
+langchain>=0.0.307
+langgraph>=0.1.0
+langsmith>=0.1.0
+
+# Database handling
+sqlite-utils>=3.36.0
+
+# Web framework (optional for the demo)
+fastapi>=0.95.0
+uvicorn[standard]>=0.23.0
+
+# Data manipulation
+pandas>=1.5.0
+
+# Testing and debugging
+pytest>=7.4.0
+pytest-mock>=3.11.0
+
+# LLM-related dependencies
+openai>=0.27.0  # For interacting with GPT APIs
+tiktoken>=0.4.0  # For token counting/management
+
+# Logging and tracing
+loguru>=0.7.0
+
+# Optional: Moderation tools
+profanity-check>=1.0.3
+
+# Optional: Authentication
+python-decouple>=3.8
+
