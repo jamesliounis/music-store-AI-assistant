@@ -5,6 +5,11 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_community.utilities.sql_database import SQLDatabase
 
+# Hardcoded absolute path to the chinook.db file
+db_uri = "sqlite:////Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"
+
+# Initialize SQLDatabase with the correct URI
+sql_db = SQLDatabase.from_uri(db_uri)
 
 class CustomerProfileManager:
     """
@@ -34,7 +39,7 @@ class CustomerProfileManager:
         print(update_result)
     """
 
-    def __init__(self, database: SQLDatabase, db_path: str = "../data/chinook.db"):
+    def __init__(self, database: SQLDatabase = sql_db, db_path: str = "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"):
         """
         Initialize the CustomerProfileManager with:
           - A SQLDatabase instance for advanced queries
@@ -45,7 +50,7 @@ class CustomerProfileManager:
         database : SQLDatabase
             An instance of the SQLDatabase connected to the Chinook database
         db_path : str
-            Fallback path to the SQLite database for direct connections (default: "../data/chinook.db")
+            Fallback path to the SQLite database for direct connections (default: "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db")
         """
         self._db = database
         self._db_path = db_path

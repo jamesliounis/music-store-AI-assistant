@@ -1,13 +1,12 @@
-# src/langgraph/nodes/customer_assistant.py
-
 from datetime import datetime
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
-from langgraph.utils import Assistant, CompleteOrEscalate, State
-from langgraph.router import Router, ToCustomerAssistant, ToMusicAssistant  
-from src.tools.customer import get_customer_info, update_customer_profile  
+from src.utils import Assistant, CompleteOrEscalate, State
+from src.tools.customer_tools import CustomerProfileManager
 from typing import List
+from langchain_community.utilities.sql_database import SQLDatabase
+
 
 
 class CustomerRunnable:
@@ -34,8 +33,10 @@ class CustomerRunnable:
             streaming=True,
             model=self.model_name
         )
-        self.customer_tools = [get_customer_info, update_customer_profile]
+        self.customer_profile_manager = CustomerProfileManager()
+        self.customer_tools = [self.customer_profile_manager.get_customer_info, self.customer_profile_manager.update_customer_profile]
         self.assistant = self._create_assistant()
+        self.database = SQLDatabase.from_uri("sqlite:////Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db")
 
     def _create_prompt(self) -> ChatPromptTemplate:
         """
@@ -120,3 +121,18 @@ class CustomerRunnable:
             The configured Assistant instance.
         """
         return self.assistant
+
+
+def create_customer_runnable() -> Assistant:
+    """
+    Factory function to create and return the Customer Assistant.
+
+    Returns:
+        Assistant: An instance of the Customer Assistant.
+    """
+    return CustomerRunnable().get_runnable()
+
+if __name__ == "__main__":
+    # Simple test to ensure the assistant is created correctly
+    customer_assistant = create_customer_runnable()
+    print("Customer Assistant successfully created:", customer_assistant)

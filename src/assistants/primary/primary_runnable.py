@@ -1,12 +1,11 @@
-# src/langgraph/nodes/primary_assistant.py
-
 from datetime import datetime
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
-from langgraph.utils import Assistant, CompleteOrEscalate, State
-from langgraph.router import Router, ToCustomerAssistant, ToMusicAssistant  # Adjust import path as needed
+from src.utils import Assistant, CompleteOrEscalate, State
+from src.assistants.primary.router import Router, ToCustomerAssistant, ToMusicAssistant
 from typing import List
+
 
 
 class PrimaryRunnable:
@@ -98,3 +97,18 @@ class PrimaryRunnable:
         """
         return self.assistant
 
+
+
+def create_primary_runnable() -> Assistant:
+    """
+    Factory function to create and return the Customer Assistant.
+
+    Returns:
+        Assistant: An instance of the Customer Assistant.
+    """
+    return PrimaryRunnable().get_runnable()
+
+if __name__ == "__main__":
+    # Simple test to ensure the assistant is created correctly
+    primary_runnable = create_primary_runnable()
+    print("Music Assistant successfully created:", primary_runnable)

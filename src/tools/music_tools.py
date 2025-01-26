@@ -4,6 +4,12 @@ from langchain_community.vectorstores import SKLearnVectorStore
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain_core.tools import tool
 
+# Hardcoded absolute path to the chinook.db file
+db_uri = "sqlite:////Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"
+
+# Initialize SQLDatabase with the correct URI
+sql_db = SQLDatabase.from_uri(db_uri)
+
 
 class MusicRetrieverManager:
     """
@@ -30,7 +36,7 @@ class MusicRetrieverManager:
         songs = manager.check_for_songs("Rehab")
     """
 
-    def __init__(self, database: SQLDatabase):
+    def __init__(self, database: SQLDatabase = sql_db, db_path: str = "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"):
         """
         Initialize the MusicRetrieverManager by querying the database
         for artists and tracks, then building approximate-matching retrievers.

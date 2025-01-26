@@ -1,13 +1,12 @@
-# src/langgraph/nodes/music_assistant.py
-
 from datetime import datetime
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
-from langgraph.utils import Assistant, CompleteOrEscalate, State
-from langgraph.router import Router, ToCustomerAssistant, ToMusicAssistant  # Adjust import path as needed
-from src.tools.query_handler import check_for_songs, get_tracks_by_artist, get_albums_by_artist  # Adjust import path as needed
+from src.utils import Assistant, CompleteOrEscalate, State
+from src.assistants.primary.router import Router, ToCustomerAssistant, ToMusicAssistant  
+from src.tools.music_tools import MusicRetrieverManager 
 from typing import List
+from langchain_community.utilities.sql_database import SQLDatabase
 
 
 class MusicRunnable:
@@ -34,7 +33,8 @@ class MusicRunnable:
             streaming=True,
             model=self.model_name
         )
-        self.music_tools = [check_for_songs, get_tracks_by_artist, get_albums_by_artist]
+        self.music_retriever = MusicRetrieverManager()
+        self.music_tools = [self.music_retriever.check_for_songs, self.music_retriever.get_tracks_by_artist, self.music_retriever.get_albums_by_artist]
         self.assistant = self._create_assistant()
 
     def _create_prompt(self) -> ChatPromptTemplate:
@@ -88,3 +88,19 @@ class MusicRunnable:
             The configured Assistant instance.
         """
         return self.assistant
+    
+
+
+def create_music_runnable() -> Assistant:
+    """
+    Factory function to create and return the Customer Assistant.
+
+    Returns:
+        Assistant: An instance of the Customer Assistant.
+    """
+    return MusicRunnable().get_runnable()
+
+if __name__ == "__main__":
+    # Simple test to ensure the assistant is created correctly
+    music_runnable = create_music_runnable()
+    print("Music Assistant successfully created:", music_runnable)
