@@ -1,32 +1,23 @@
-# Core dependencies
-langchain>=0.0.307
-langgraph>=0.1.0
-langsmith>=0.1.0
+# Core LLM / LangChain functionality
+langchain
+langchain_core
+langchain_community
 
-# Database handling
-sqlite-utils>=3.36.0
+# OpenAI Python client for embeddings and ChatOpenAI usage
+openai
 
-# Web framework (optional for the demo)
-fastapi>=0.95.0
-uvicorn[standard]>=0.23.0
+# For environment variable loading
+python-dotenv
 
-# Data manipulation
-pandas>=1.5.0
+# For approximate matching / vector storage
+scikit-learn
 
-# Testing and debugging
-pytest>=7.4.0
-pytest-mock>=3.11.0
+# Pydantic used for BaseModel definitions, typed classes
+pydantic
 
-# LLM-related dependencies
-openai>=0.27.0  # For interacting with GPT APIs
-tiktoken>=0.4.0  # For token counting/management
+# For Python 3.8+ type hints like Literal and TypedDict
+typing_extensions
 
-# Logging and tracing
-loguru>=0.7.0
-
-# Optional: Moderation tools
-profanity-check>=1.0.3
-
-# Optional: Authentication
-python-decouple>=3.8
+# Likely needed by the SQLDatabase usage behind the scenes
+sqlalchemy
 
