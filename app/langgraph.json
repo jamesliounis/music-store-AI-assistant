@@ -1,0 +1,10 @@
+// langgraph.json
+
+{
+    "graph_name": "CustomerSupportBot",
+    "description": "A customer support chatbot for a music store using LangGraph and LangSmith.",
+    "entry_point": "my_agent.agent:build_graph",
+    "env_file": ".env",
+    "dependencies": ["my_agent/requirements.txt"]
+}
+
