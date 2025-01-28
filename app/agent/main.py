@@ -10,7 +10,8 @@ from langgraph.graph.message import AnyMessage
 from agent import build_graph  
 from langgraph.graph.message import add_messages
 from utils.state import State  
-from utils.logger import get_logger  
+from utils.logger import get_logger 
+import traceback  
 from typing import Optional
 
 # Initialize Logger
@@ -52,26 +53,19 @@ def build_system_message(user_info: dict) -> SystemMessage:
     SystemMessage
         The constructed system message.
     """
-    first_name = user_info.get('FirstName', 'Valued Customer')
+    # first_name = user_info['FirstName', 'Valued Customer')
     customer_id = user_info.get('CustomerID', 'N/A')
     return SystemMessage(
         content=(
-            f"You are an AI Chatbot. You are speaking with this customer: {first_name}, "
+            f"You are an AI Chatbot. You are speaking with this customer: {user_info}, "
             f"a valued customer. Greet them by name. Pay attention to their unique customer ID: {customer_id}."
         )
     )
 
-def print_latest_event(events: list, user_input: Optional[str] = None):
+def print_latest_event(events, user_input=None):
     """
     Helper to print only the most recent AI message and the user's input.
     It skips repeated system or irrelevant responses.
-
-    Parameters:
-    ----------
-    events : list
-        The list of event dictionaries returned by the graph.
-    user_input : Optional[str]
-        The latest user input to display.
     """
     latest_message = None
 
@@ -86,7 +80,7 @@ def print_latest_event(events: list, user_input: Optional[str] = None):
     if user_input:
         print(f"YOU: {user_input}")
     if latest_message:
-        print(latest_message)
+        print(latest_message) 
 
 def main():
     """
@@ -124,7 +118,7 @@ def main():
 
         # Retrieve user_info from the state
         snapshot = graph.get_state(config_data)
-        user_info_data = snapshot.values.get("user_info", {})
+        user_info_data = snapshot.values["user_info"]
         logger.debug(f"User info retrieved: {user_info_data}")
 
         # Build system message
@@ -134,8 +128,9 @@ def main():
         init_result = graph.invoke({"messages": [system_msg]}, config_data)
         logger.info("System message inserted into the graph.")
 
-        if isinstance(init_result, dict):
-            print_latest_event([init_result])
+        if isinstance(init_result, dict) and "messages" in init_result:
+            print_latest_event(init_result["messages"])
+
 
         # Start the interactive chat loop
         while True:
@@ -190,6 +185,7 @@ def main():
 
     except Exception as e:
         logger.critical(f"Failed to start the chatbot: {e}")
+        logger.critical(traceback.format_exc())
         print("Failed to start the chatbot. Please check the logs for more details.")
 
 if __name__ == "__main__":

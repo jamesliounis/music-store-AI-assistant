@@ -18,6 +18,9 @@ import json
 import uuid
 import os
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from dotenv import load_dotenv
+
+load_dotenv()
 
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4-turbo-preview")
 TEMPERATURE = float(os.getenv("TEMPERATURE", 0))
@@ -260,21 +263,21 @@ def build_graph() -> StateGraph:
     builder = StateGraph(State)
     memory = MemorySaver()
 
-    
-    
+    # Fetch User Info
     builder.add_node("fetch_user_info", user_info)
     builder.add_edge(START, "fetch_user_info")
 
-
-    # Add primary assistant
+    # Primary Assistant
     builder.add_node("primary_assistant", Assistant(primary_runnable))
-    builder.add_node(
-    "primary_assistant_tools", create_tool_node_with_fallback(primary_tools)
-)
-    builder.add_edge("primary_assistant_tools", "primary_assistant")
+    builder.add_node("primary_assistant_tools", create_tool_node_with_fallback(primary_tools))
+    builder.add_edge("fetch_user_info", "primary_assistant")
 
-    def route_primary_assistant(state: State):
+
+    def route_primary_assistant(
+        state: State,
+    ):
         route = tools_condition(state)
+        print("route", route)
         if route == END:
             return END
         tool_calls = state["messages"][-1].tool_calls
@@ -286,35 +289,54 @@ def build_graph() -> StateGraph:
             return "primary_assistant_tools"
         raise ValueError("Invalid route")
 
-    builder.add_conditional_edges(
-        "primary_assistant",
-        route_primary_assistant,
-        [
-            "enter_customer_profile",
-            "enter_music",
-            "primary_assistant_tools",
-            END,
-        ],
-    )
 
-    # Enter Customer Profile
-    builder.add_node(
+#     builder.add_conditional_edges(
+#     "primary_assistant",
+#     route_primary_assistant,
+#     [
+#         "enter_customer_profile",
+#         "enter_music",
+#         "primary_assistant_tools",
+#         END,
+#     ],
+# )
+
+    builder.add_conditional_edges(
+    "primary_assistant",
+    route_primary_assistant,
+    [
         "enter_customer_profile",
-        create_entry_node("Customer Assistant", "customer_assistant"),
-    )
+        "enter_music",
+        "primary_assistant_tools",
+        "leave_skill",  # Ensure we can return to the primary assistant
+        END,
+    ],
+)
+
+    builder.add_edge("primary_assistant_tools", "primary_assistant")
+
+    # Customer Profile Assistant
+    builder.add_node("enter_customer_profile", create_entry_node("Customer Assistant", "customer_assistant"))
     builder.add_node("customer_assistant", Assistant(customer_runnable))
-    builder.add_node(
-        "customer_safe_tools",
-        create_tool_node_with_fallback(primary_tools),
-    )
-    builder.add_node(
-        "customer_sensitive_tools",
-        create_tool_node_with_fallback(customer_sensitive_tools),
-    )
+    builder.add_node("customer_safe_tools", create_tool_node_with_fallback(customer_safe_tools))
+    builder.add_node("customer_sensitive_tools", create_tool_node_with_fallback(customer_sensitive_tools))
+    builder.add_edge("enter_customer_profile", "customer_assistant")
     builder.add_edge("customer_safe_tools", "customer_assistant")
     builder.add_edge("customer_sensitive_tools", "customer_assistant")
 
-    def route_customer_assistant(state: State):
+    # def route_customer_assistant(state: State):
+    #     tool_calls = state["messages"][-1].tool_calls
+    #     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
+    #     if did_cancel:
+    #         return "leave_skill"
+    #     safe_toolnames = [t.name for t in customer_safe_tools]
+    #     if all(tc["name"] in safe_toolnames for tc in tool_calls):
+    #         return "customer_safe_tools"
+    #     return "customer_sensitive_tools"
+
+    def route_customer_assistant(
+        state: State,
+    ):
         route = tools_condition(state)
         if route == END:
             return END
@@ -322,7 +344,7 @@ def build_graph() -> StateGraph:
         did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
         if did_cancel:
             return "leave_skill"
-        safe_toolnames = [t.name for t in customer_tools if t != update_customer_profile]
+        safe_toolnames = [t.name for t in customer_safe_tools]
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "customer_safe_tools"
         return "customer_sensitive_tools"
@@ -330,60 +352,82 @@ def build_graph() -> StateGraph:
     builder.add_conditional_edges(
         "customer_assistant",
         route_customer_assistant,
-        [
-            "customer_safe_tools",
-            "customer_sensitive_tools",
-            "leave_skill",
-            END,
-        ],
+        ["customer_safe_tools", "customer_sensitive_tools", "leave_skill", END],
     )
 
-    # Enter Music Assistant
-    builder.add_node(
-        "enter_music",
-        create_entry_node("Music Assistant", "music_assistant"),
-    )
+    # Music Assistant
+    builder.add_node("enter_music", create_entry_node("Music Assistant", "music_assistant"))
     builder.add_node("music_assistant", Assistant(music_runnable))
-    builder.add_node(
-        "music_tools",
-        create_tool_node_with_fallback(music_tools),
-    )
+    builder.add_node("music_tools", create_tool_node_with_fallback(music_tools))
+    builder.add_edge("enter_music", "music_assistant")
     builder.add_edge("music_tools", "music_assistant")
+
+    # def route_music_assistant(state: State):
+    #     tool_calls = state["messages"][-1].tool_calls
+    #     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
+    #     if did_cancel:
+    #         return "leave_skill"
+    #     return "music_tools"
 
     def route_music_assistant(state: State):
         route = tools_condition(state)
         if route == END:
             return END
+        
         tool_calls = state["messages"][-1].tool_calls
         did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
+        
         if did_cancel:
             return "leave_skill"
+
+        # Route directly to music_tools if only one group exists
         safe_toolnames = [t.name for t in music_tools]
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "music_tools"
-        return "music_tools"
+        return "music_tools"  
 
     builder.add_conditional_edges(
         "music_assistant",
         route_music_assistant,
-        [
-            "music_tools",
-            "leave_skill",
-            END,
-        ],
+        ["music_tools", "leave_skill", END],
     )
 
     # Leave Skill
     builder.add_node("leave_skill", pop_dialog_state)
     builder.add_edge("leave_skill", "primary_assistant")
 
+    builder.add_conditional_edges("fetch_user_info", route_to_workflow)
+
     # Compile Graph
     graph = builder.compile(
         checkpointer=memory,
-        interrupt_before=["customer_sensitive_tools", "music_tools"]
+        interrupt_before=["customer_sensitive_tools"],
     )
     return graph
 
 
-build_graph()
-print("graph built successfully!")
+from IPython.display import Image
+
+def save_graph_visualization(graph: StateGraph, save_path: str):
+    """
+    Save the graph visualization as a PNG file.
+    
+    Parameters:
+    ----------
+    graph : StateGraph
+        The constructed state graph.
+    save_path : str
+        The file path to save the visualization PNG.
+    """
+    try:
+        # Generate graph visualization as a PNG image
+        graph_image = graph.get_graph(xray=True).draw_mermaid_png()
+        with open(save_path, "wb") as f:
+            f.write(graph_image)
+        print(f"Graph visualization saved successfully at {save_path}")
+    except Exception as e:
+        print(f"Failed to save graph visualization: {str(e)}")
+
+output_path = "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/docs/v2_graph_visualization.png"
+graph = build_graph()
+save_graph_visualization(graph, output_path)

@@ -26,7 +26,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Database
-DATABASE_URI ="sqlite:////Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"
+DATABASE_FILE = "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"
+DATABASE_URI = f"sqlite:///{os.path.abspath(DATABASE_FILE)}"
 db = SQLDatabase.from_uri(DATABASE_URI)
 
 # Initialize LLM
@@ -104,7 +105,7 @@ def get_user_info(config: RunnableConfig) -> dict:
         raise ValueError("No customer_id configured in config['configurable'].")
 
     # Connect to your DB
-    conn = sqlite3.connect(DATABASE_URI)
+    conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
     # Query the customer row

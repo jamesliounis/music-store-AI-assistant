@@ -76,7 +76,7 @@ def pop_dialog_state(state: State) -> dict:
         "messages": messages,
     }
 
-def route_to_workflow(state: State) -> Literal["primary_assistant", "music", "customer_assistant"]:
+def route_to_workflow(state: State) -> Literal["primary_assistant", "music_assistant", "customer_assistant"]:
     """
     Route to the appropriate workflow based on the current dialog state.
     """
