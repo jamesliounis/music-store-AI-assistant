@@ -7,15 +7,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
 from langgraph.graph.message import AnyMessage
-from agent import build_graph  
+from agent import build_graph
 from langgraph.graph.message import add_messages
-from utils.state import State  
-from utils.logger import get_logger 
-import traceback  
+from utils.state import State
+from utils.logger import get_logger
+import traceback
 from typing import Optional
 
 # Initialize Logger
 logger = get_logger(__name__)
+
 
 def load_config(config_path: str) -> dict:
     """
@@ -39,6 +40,7 @@ def load_config(config_path: str) -> dict:
     logger.info(f"Configuration loaded from {config_path}.")
     return config_data
 
+
 def build_system_message(user_info: dict) -> SystemMessage:
     """
     Build a system message that references the user's info.
@@ -53,13 +55,14 @@ def build_system_message(user_info: dict) -> SystemMessage:
     SystemMessage
         The constructed system message.
     """
-    customer_id = user_info.get('CustomerId', 'N/A')
+    customer_id = user_info.get("CustomerId", "N/A")
     return SystemMessage(
         content=(
             f"You are an AI Chatbot. You are speaking with this customer: {user_info}, "
             f"a valued customer. You must absolutely greet them by name. Pay attention to their unique customer ID: {customer_id}."
         )
     )
+
 
 def print_latest_event(events, user_input=None):
     """
@@ -81,6 +84,7 @@ def print_latest_event(events, user_input=None):
     if latest_message:
         print(latest_message)
 
+
 def main():
     """
     The main function to initialize and run the LangGraph-based customer support chatbot.
@@ -91,7 +95,9 @@ def main():
         logger.info("Environment variables loaded.")
 
         # Determine the base directory (app root)
-        base_dir = Path(__file__).resolve().parent.parent  # Adjusted to account for the directory structure
+        base_dir = (
+            Path(__file__).resolve().parent.parent
+        )  # Adjusted to account for the directory structure
         logger.debug(f"Base directory set to: {base_dir}")
 
         # Path to config.json
@@ -104,8 +110,12 @@ def main():
         # Dynamically inject thread_id and set customer_id with default
         thread_id = str(uuid.uuid4())
         config_data["configurable"]["thread_id"] = thread_id
-        config_data["configurable"]["customer_id"] = config_data["configurable"].get("customer_id", 1)
-        logger.info(f"Injected thread_id: {thread_id} and set customer_id: {config_data['configurable']['customer_id']}")
+        config_data["configurable"]["customer_id"] = config_data["configurable"].get(
+            "customer_id", 1
+        )
+        logger.info(
+            f"Injected thread_id: {thread_id} and set customer_id: {config_data['configurable']['customer_id']}"
+        )
 
         # Build the LangGraph
         graph = build_graph()
@@ -126,9 +136,7 @@ def main():
         # Insert the system message and print greeting
         init_result = graph.invoke({"messages": [system_msg]}, config_data)
         logger.info("System message inserted into the graph.")
-        
 
-        # ✅ Correctly extract messages and ensure AI response is printed
         if isinstance(init_result, dict) and "messages" in init_result:
             messages = init_result["messages"]
             if messages:  # Ensure messages list is not empty
@@ -136,9 +144,9 @@ def main():
             else:
                 logger.warning("AI did not generate any messages.")
         else:
-            logger.error(f"Unexpected init_result format: {init_result}")  # Debugging help
-
-
+            logger.error(
+                f"Unexpected init_result format: {init_result}"
+            )  # Debugging help
 
         # Start the interactive chat loop
         while True:
@@ -153,7 +161,7 @@ def main():
                 events = graph.stream(
                     {"messages": [HumanMessage(content=user_input)]},
                     config_data,
-                    stream_mode="values"
+                    stream_mode="values",
                 )
                 print_latest_event(events, user_input=user_input)
                 logger.debug("User input processed and response printed.")
@@ -161,21 +169,33 @@ def main():
                 # Check for interrupts (human-in-the-loop approvals)
                 snapshot = graph.get_state(config_data)
                 while snapshot.next:
-                    print("\n**INTERRUPT**: The chatbot wants to perform a sensitive action.\n")
-                    user_decision = input("Approve? (y/n or type reason): ").strip().lower()
+                    print(
+                        "\n**INTERRUPT**: The chatbot wants to perform a sensitive action.\n"
+                    )
+                    user_decision = (
+                        input("Approve? (y/n or type reason): ").strip().lower()
+                    )
                     logger.debug(f"User decision on interrupt: {user_decision}")
 
                     if user_decision == "y":
                         resumed_output = graph.invoke(None, config_data)
-                        if isinstance(resumed_output, dict) and "messages" in resumed_output:
+                        if (
+                            isinstance(resumed_output, dict)
+                            and "messages" in resumed_output
+                        ):
                             print_latest_event([resumed_output])
                             logger.info("Sensitive action approved by user.")
                     else:
                         denial_msg = ToolMessage(
                             content=f"Action denied by user. Reason: '{user_decision}'. Please adapt."
                         )
-                        resumed_output = graph.invoke({"messages": [denial_msg]}, config_data)
-                        if isinstance(resumed_output, dict) and "messages" in resumed_output:
+                        resumed_output = graph.invoke(
+                            {"messages": [denial_msg]}, config_data
+                        )
+                        if (
+                            isinstance(resumed_output, dict)
+                            and "messages" in resumed_output
+                        ):
                             print_latest_event([resumed_output])
                             logger.info("Sensitive action denied by user.")
 
@@ -195,6 +215,7 @@ def main():
         logger.critical(f"Failed to start the chatbot: {e}")
         logger.critical(traceback.format_exc())
         print("Failed to start the chatbot. Please check the logs for more details.")
+
 
 if __name__ == "__main__":
     main()

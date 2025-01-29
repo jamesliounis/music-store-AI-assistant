@@ -48,32 +48,15 @@ embeddings = OpenAIEmbeddings()
 @tool
 def get_customer_info(customer_id: int):
     """
-    Retrieve customer information from the database using their unique customer ID.
-
-    This tool queries the 'customers' table in the Chinook database to fetch information
-    about a specific customer. It is essential to ensure that the customer ID is provided
-    and is valid before invoking this function.
-
-    Parameters:
-    ----------
-    customer_id : int
-        The unique identifier for the customer in the database.
-
+    Retrieve customer details by customer ID.
+    
+    Args:
+        customer_id (int): Unique customer identifier.
 
     Returns:
-    -------
-    list or dict
-        If a customer record is found, returns a list containing one tuple (the row).
-        If no record is found or there's an error, returns a dict with an "error" key.
-
-    Notes:
-    ------
-    - ALWAYS confirm that the customer ID is available and valid before calling this function.
-    - If the customer ID is invalid or does not exist, the function will return an appropriate
-      error message.
-    - Example usage:
-        `get_customer_info(1)` will information for the customer with ID 1.
+        list | dict: Customer data or an error message.
     """
+
     # Validate that a customer ID is provided
     if not isinstance(customer_id, int) or customer_id <= 0:
         return {
@@ -94,18 +77,13 @@ def get_customer_info(customer_id: int):
 @tool
 def get_user_info(config: RunnableConfig) -> dict:
     """
-    Retrieve customer information from the 'customers' table
-    using a 'customer_id' read from 'config["configurable"]["customer_id"]'.
+    Retrieve customer info using `customer_id` from config.
 
-    If the record is found, returns a dictionary of column_name -> value.
-    Otherwise, returns {'error': ...}.
+    Args:
+        config (RunnableConfig): Config containing `customer_id`.
 
-    Example usage:
-    --------------
-    config = {"configurable": {"customer_id": 1}}
-    result = get_user_info.invoke(config)
-
-    The function will look up the customer with ID=1.
+    Returns:
+        dict: Customer details or an error message.
     """
     configuration = config.get("configurable", {})
     customer_id = configuration.get("customer_id", None)
@@ -140,21 +118,15 @@ def get_user_info(config: RunnableConfig) -> dict:
 @tool
 def update_customer_profile(customer_id: int, field: str, new_value: str):
     """
-    Update a specific field in a customer's profile.
+    Update a specific customer profile field.
 
-    Parameters:
-    ----------
-    customer_id : int
-        The unique identifier for the customer in the database.
-    field : str
-        The name of the field to update (e.g., 'FirstName', 'LastName', 'Email').
-    new_value : str
-        The new value to update in the specified field.
+    Args:
+        customer_id (int): Unique customer ID.
+        field (str): Field name to update.
+        new_value (str): New field value.
 
     Returns:
-    -------
-    dict
-        A dictionary containing a success message or an error message.
+        dict: Success or error message.
     """
     print(
         f"Received inputs - Customer ID: {customer_id}, Field: {field}, New Value: {new_value}"
@@ -231,37 +203,13 @@ def update_customer_profile(customer_id: int, field: str, new_value: str):
 @tool
 def get_albums_by_artist(artist_name: str):
     """
-    Retrieve a list of albums by a given artist or similar artists using approximate matching.
+    Retrieve albums by an artist or similar artists.
 
-    This tool leverages the `artist_retriever` to find artists whose names closely match
-    the provided input and then queries the database to get the albums associated with
-    those artists.
-
-    Parameters:
-    ----------
-    artist_name : str
-        The name of the artist to search for.
+    Args:
+        artist_name (str): Name of the artist.
 
     Returns:
-    -------
-    list
-        A list of dictionaries, where each dictionary contains:
-        - Title: The album title.
-        - Name: The artist's name.
-
-    Notes:
-    ------
-    - If no matching artists are found, an appropriate message will be returned.
-    - Uses approximate matching via the `artist_retriever` to handle typos and partial matches.
-    - Example usage:
-        `get_albums_by_artist("The Beatles")` retrieves albums for "The Beatles" or similar artists.
-
-    Example Response:
-    -----------------
-        [
-            {"Title": "Revolver", "Name": "The Beatles"},
-            {"Title": "Abbey Road", "Name": "The Beatles"}
-        ]
+        list | dict: Album details or an error message.
     """
     try:
         # Find relevant artists using the retriever
@@ -307,33 +255,13 @@ def get_albums_by_artist(artist_name: str):
 @tool
 def get_tracks_by_artist(artist_name: str):
     """
-    Retrieves a list of tracks by a given artist or similar artists using approximate matching.
-
-    This function leverages an artist retriever to find relevant artist IDs based on the
-    input artist name. It then queries the database to fetch tracks associated with
-    the identified artists.
-
-    Workflow:
-    - Uses `artist_retriever` to retrieve similar artist IDs based on `artist_name`.
-    - Constructs an SQL query to fetch track names and corresponding artists.
-    - Executes the query and returns the results.
+    Retrieve tracks by an artist or similar artists.
 
     Args:
-        artist_name (str): The name of the artist whose tracks should be retrieved.
+        artist_name (str): Name of the artist.
 
     Returns:
-        dict:
-            - If successful, returns a dictionary containing track and artist details.
-            - If no tracks are found, returns a message indicating no results.
-            - If an error occurs, returns an error message.
-
-    Raises:
-        Exception: Catches and returns any errors encountered during retrieval or querying.
-
-    Notes:
-        - The query is case-insensitive.
-        - If `artist_retriever` is not initialized, an error message is returned.
-        - Uses approximate matching to retrieve tracks by similar artists.
+        list | dict: Track details or an error message.
     """
     # Validate retriever initialization
     if artist_retriever is None:
@@ -384,22 +312,11 @@ def check_for_songs(song_title: str):
     """
     Search for songs by title using approximate matching.
 
-    This tool uses the `song_retriever` to find songs whose titles closely match
-    the provided input. It returns relevant information about the songs.
-
-    Parameters:
-    ----------
-    song_title : str
-        The title of the song to search for.
+    Args:
+        song_title (str): Title of the song.
 
     Returns:
-    -------
-    list
-        A list of dictionaries with song details or a message if no matches are found.
-
-    Notes:
-    ------
-    If no exact match is found, it returns similar titles.
+        list | dict: Song details or an error message.
     """
     try:
         # Retrieve relevant songs using the retriever
@@ -419,36 +336,13 @@ def check_for_songs(song_title: str):
 
 def create_music_retrievers(database):
     """
-    Create retrievers for looking up artists and tracks using approximate matching.
+    Create retrievers for artist and track searches.
 
-    This function uses a vector-based search mechanism to create retrievers for artists and
-    track names from the Chinook database. It enables efficient and error-tolerant lookups
-    of artist and track names without requiring exact spelling.
-
-    Parameters:
-    ----------
-    database : SQLDatabase
-        An instance of the SQLDatabase connected to the Chinook database.
+    Args:
+        database (SQLDatabase): Connected database instance.
 
     Returns:
-    -------
-    tuple
-        A tuple containing:
-        - artist_retriever: A retriever for searching artist names.
-        - song_retriever: A retriever for searching track names.
-
-    Notes:
-    ------
-    - The function queries the database for artists and tracks, retrieves their names,
-      and indexes them into separate retrievers.
-    - OpenAI embeddings are used for generating vector representations of the names.
-    - The retrievers allow for approximate matching, making it user-friendly for misspelled
-      or partially remembered artist/track names.
-
-    Example Usage:
-    --------------
-        db = SQLDatabase.from_uri(DB_URI)
-        artist_retriever, song_retriever = create_music_retrievers(db)
+        tuple: (artist_retriever, song_retriever)
     """
     try:
         # Query the database for artists and tracks
@@ -487,24 +381,13 @@ song_retriever = None
 
 def initialize_retrievers(database):
     """
-    Initializes global retrievers for music-related queries.
-
-    This function sets up two global retrievers:
-    - `artist_retriever`: Used for retrieving artists based on approximate matching.
-    - `song_retriever`: Used for retrieving songs based on relevant queries.
-
-    The retrievers are created using the `create_music_retrievers` function,
-    which configures them based on the provided database.
+    Initialize global retrievers for music-related queries.
 
     Args:
-        database: The database connection object used to initialize retrievers.
+        database (SQLDatabase): Database connection.
 
     Returns:
         None
-
-    Notes:
-        - This function must be called once during setup before any retrieval operations.
-        - It modifies the global `artist_retriever` and `song_retriever` variables.
     """
     global artist_retriever, song_retriever
     artist_retriever, song_retriever = create_music_retrievers(database)

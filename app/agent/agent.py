@@ -7,7 +7,9 @@ from langgraph.prebuilt import tools_condition
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
-from utils.state import State  
+from utils.state import State
+
+# from agent.utils.state import State
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
@@ -26,6 +28,8 @@ MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4-turbo-preview")
 TEMPERATURE = float(os.getenv("TEMPERATURE", 0))
 STREAMING = os.getenv("STREAMING", "True").lower() in ("true", "1", "t")
 
+os.environ["LANGGRAPH_STORAGE_BACKEND"] = "memory"
+
 llm = ChatOpenAI(temperature=TEMPERATURE, streaming=STREAMING, model=MODEL_NAME)
 
 # Import utilities and tools
@@ -39,6 +43,8 @@ from utils.tools import (
     artist_retriever,
     song_retriever,
 )
+
+
 from utils.nodes import (
     fetch_user_info,
     handle_tool_error,
@@ -46,25 +52,21 @@ from utils.nodes import (
     pop_dialog_state,
     route_to_workflow,
 )
-from utils.state import State
 
-from langchain_core.messages import (
-    HumanMessage,
-    AIMessage,
-    ToolMessage,
-    SystemMessage
-)
+
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
 
 from langgraph.graph.message import add_messages
 
 # Initialize Logger
 from utils.logger import get_logger
+
 logger = get_logger(__name__)
 
+
 def create_tool_node_with_fallback(tools: list) -> dict:
-    return ToolNode(tools).with_fallbacks(
-        [RunnableLambda(handle_tool_error)]
-    )
+    return ToolNode(tools).with_fallbacks([RunnableLambda(handle_tool_error)])
+
 
 # Define Assistants and Prompts
 
@@ -113,7 +115,8 @@ customer_assistance_prompt = ChatPromptTemplate.from_messages(
             - If the user requests to update a field that is invalid or unavailable, inform them politely of the valid fields:
             - Allowed fields: `FirstName`, `LastName`, `Company`, `Address`, `City`, `State`, `Country`, `PostalCode`, `Phone`, `Fax`, `Email`, and `SupportRepId`.
             - If you are unable to assist with the user's request, politely suggest they contact customer support.
-            """ + extra_customer_security
+            """
+            + extra_customer_security,
         ),
         ("placeholder", "{messages}"),
     ]
@@ -132,7 +135,7 @@ music_assistance_prompt = ChatPromptTemplate.from_messages(
 
             When looking up artists and songs, sometimes the exact match may not be found. In such cases, the tools are designed to return 
             information about similar songs or artists. This is intentional and helps provide relevant recommendations.
-            """ 
+            """,
         ),
         ("placeholder", "{messages}"),
     ]
@@ -158,11 +161,12 @@ primary_assistant_prompt = ChatPromptTemplate.from_messages(
             - For any other inquiries, respond politely and explain what you can assist with.
 
             Always aim to be polite and clear in your interactions.
-            """
+            """,
         ),
         ("placeholder", "{messages}"),
     ]
 ).partial(time=datetime.now)
+
 
 # Define CompleteOrEscalate Model
 class CompleteOrEscalate(BaseModel):
@@ -188,6 +192,7 @@ class CompleteOrEscalate(BaseModel):
             },
         }
 
+
 # Define Router Model
 class Router(BaseModel):
     """
@@ -201,22 +206,50 @@ class Router(BaseModel):
         - 'music' for inquiries related to music recommendations or music information.
         - 'customer' for inquiries related to updating or accessing user information.
     """
+
     choice: str = Field(description="Should be one of: 'music', 'customer'.")
+
 
 # Define Transfer Models
 class ToCustomerAssistant(BaseModel):
-    """Transfers work to a specialized assistant to handle customer profile queries."""
+    """
+    Transfers the conversation to a specialized assistant for handling customer profile queries.
+
+    Attributes:
+    ----------
+    request : str
+        A follow-up request to clarify necessary details for retrieving or updating customer information.
+
+    Notes:
+    ------
+    - This model ensures that the customer assistant receives well-defined queries.
+    - Used when transitioning from the primary assistant to the customer assistant.
+    """
 
     request: str = Field(
         description="Any necessary follow-up questions to retrieve or update customer information should clarify before proceeding."
     )
 
+
 class ToMusicAssistant(BaseModel):
-    """Transfers work to a specialized assistant to handle music-related queries."""
+    """
+    Transfers the conversation to a specialized assistant for handling music-related queries.
+
+    Attributes:
+    ----------
+    request : str
+        A follow-up request to clarify necessary details for providing relevant music information.
+
+    Notes:
+    ------
+    - This model ensures that the music assistant receives well-defined queries.
+    - Used when transitioning from the primary assistant to the music assistant.
+    """
 
     request: str = Field(
         description="Any necessary follow-up questions to give information about music should clarify before proceeding."
     )
+
 
 # Initialize Assistants
 customer_tools = [get_customer_info, update_customer_profile]
@@ -237,8 +270,34 @@ primary_runnable = primary_assistant_prompt | llm.bind_tools(
     primary_tools + [ToMusicAssistant, ToCustomerAssistant]
 )
 
+
 # Define Assistant Classes
 class Assistant:
+    """
+    Represents an AI assistant that processes user messages using a provided `Runnable`.
+
+    This class wraps a `Runnable` object to manage interactions, ensuring that
+    responses contain meaningful content before returning results.
+
+    Attributes:
+    ----------
+    runnable : Runnable
+        The underlying runnable instance that processes user queries.
+
+    Methods:
+    --------
+    __call__(state: State, config: RunnableConfig) -> dict:
+        Executes the assistant’s logic by invoking the `runnable` with the current state.
+        If the response lacks tool calls and meaningful content, prompts the assistant
+        to generate a proper output before returning the result.
+
+    Notes:
+    ------
+    - The loop ensures that an empty response does not get returned prematurely.
+    - If the model produces an empty or missing output, it prompts for a proper response.
+    - The returned dictionary contains the updated messages.
+    """
+
     def __init__(self, runnable: Runnable):
         self.runnable = runnable
 
@@ -256,7 +315,8 @@ class Assistant:
             else:
                 break
         return {"messages": result}
-    
+
+
 def user_info(state: State) -> State:
     """
     Retrieve a customer_id from state["configurable"]["customer_id"],
@@ -265,8 +325,33 @@ def user_info(state: State) -> State:
     """
     return {"user_info": get_user_info.invoke({})}
 
+
 # Build State Graph
 def build_graph() -> StateGraph:
+    """
+    Constructs and returns a state graph for managing multi-assistant interactions.
+
+    This function defines a stateful conversational workflow using `StateGraph`,
+    enabling dynamic routing between different assistant modules based on user input.
+    The graph includes:
+
+    - **Primary Assistant**: The main assistant handling general interactions.
+    - **Customer Assistant**: A specialized assistant for customer-related queries.
+    - **Music Assistant**: An assistant for handling music-related interactions.
+    - **Leave Skill State**: A transition node to return to the primary assistant.
+
+    The routing logic ensures that:
+    - The system fetches user information before determining the appropriate assistant.
+    - Conditional edges direct user input to the appropriate assistant based on tool calls.
+    - Assistants have distinct tool sets for handling sensitive and safe interactions.
+    - Users can exit assistant-specific workflows and return to the primary assistant.
+
+    Returns:
+        StateGraph: A compiled state graph with defined nodes, edges, and conditional routing.
+
+    Raises:
+        ValueError: If an invalid route is encountered in `route_primary_assistant`.
+    """
     builder = StateGraph(State)
     memory = MemorySaver()
 
@@ -276,19 +361,44 @@ def build_graph() -> StateGraph:
 
     # Primary Assistant
     builder.add_node("primary_assistant", Assistant(primary_runnable))
-    builder.add_node("primary_assistant_tools", create_tool_node_with_fallback(primary_tools))
+    builder.add_node(
+        "primary_assistant_tools", create_tool_node_with_fallback(primary_tools)
+    )
     # builder.add_edge("fetch_user_info", "primary_assistant")
 
     builder.add_conditional_edges(
-    "fetch_user_info", 
-    route_to_workflow,  # A function dynamically deciding the next step
-    ["primary_assistant", "music_assistant", "customer_assistant"]
+        "fetch_user_info",
+        route_to_workflow,  # A function dynamically deciding the next step
+        ["primary_assistant", "music_assistant", "customer_assistant"],
     )
-
 
     def route_primary_assistant(
         state: State,
     ):
+        """
+        Determines the next state transition for the primary assistant based on user input.
+
+        This function inspects the latest tool call in the conversation state and
+        dynamically routes the user to the appropriate assistant or tool node.
+
+        Routing logic:
+        - If the predefined `tools_condition` function returns `END`, terminate the workflow.
+        - If the latest tool call matches:
+        - `ToCustomerAssistant`, transition to "enter_customer_profile".
+        - `ToMusicAssistant`, transition to "enter_music".
+        - Otherwise, transition to "primary_assistant_tools".
+        - If no valid transition is found, raises a `ValueError`.
+
+        Args:
+            state (State): The current state of the conversation.
+
+        Returns:
+            str: The name of the next state to transition to.
+
+        Raises:
+            ValueError: If the tool call does not match any expected route.
+        """
+
         route = tools_condition(state)
         if route == END:
             return END
@@ -301,34 +411,61 @@ def build_graph() -> StateGraph:
             return "primary_assistant_tools"
         raise ValueError("Invalid route")
 
-
     builder.add_conditional_edges(
-    "primary_assistant",
-    route_primary_assistant,
-    [
-        "enter_customer_profile",
-        "enter_music",
-        "primary_assistant_tools",
-        "leave_skill",  # Ensure we can return to the primary assistant
-        END,
-    ],
-)
+        "primary_assistant",
+        route_primary_assistant,
+        [
+            "enter_customer_profile",
+            "enter_music",
+            "primary_assistant_tools",
+            "leave_skill",  # Ensure we can return to the primary assistant
+            END,
+        ],
+    )
 
     builder.add_edge("primary_assistant_tools", "primary_assistant")
 
     # Customer Profile Assistant
-    builder.add_node("enter_customer_profile", create_entry_node("Customer Assistant", "customer_assistant"))
+    builder.add_node(
+        "enter_customer_profile",
+        create_entry_node("Customer Assistant", "customer_assistant"),
+    )
     builder.add_node("customer_assistant", Assistant(customer_runnable))
-    builder.add_node("customer_safe_tools", create_tool_node_with_fallback(customer_safe_tools))
-    builder.add_node("customer_sensitive_tools", create_tool_node_with_fallback(customer_sensitive_tools))
+    builder.add_node(
+        "customer_safe_tools", create_tool_node_with_fallback(customer_safe_tools)
+    )
+    builder.add_node(
+        "customer_sensitive_tools",
+        create_tool_node_with_fallback(customer_sensitive_tools),
+    )
     builder.add_edge("enter_customer_profile", "customer_assistant")
     builder.add_edge("customer_safe_tools", "customer_assistant")
     builder.add_edge("customer_sensitive_tools", "customer_assistant")
 
-
     def route_customer_assistant(
         state: State,
     ):
+        """
+        Determines the next state transition for the customer assistant based on tool calls.
+
+        This function evaluates the latest tool calls in the conversation state and routes
+        the user to the appropriate customer assistant workflow.
+
+        Routing logic:
+        - If `tools_condition` returns `END`, the conversation ends.
+        - If any tool call is `CompleteOrEscalate`, transition to "leave_skill".
+        - If all tool calls belong to `customer_safe_tools`, transition to "customer_safe_tools".
+        - Otherwise, transition to "customer_sensitive_tools".
+
+        Args:
+            state (State): The current conversation state.
+
+        Returns:
+            str: The name of the next state to transition to.
+
+        Raises:
+            ValueError: If an unexpected condition occurs (not explicitly handled in this logic).
+        """
         route = tools_condition(state)
         if route == END:
             return END
@@ -348,34 +485,51 @@ def build_graph() -> StateGraph:
     )
 
     # Music Assistant
-    builder.add_node("enter_music", create_entry_node("Music Assistant", "music_assistant"))
+    builder.add_node(
+        "enter_music", create_entry_node("Music Assistant", "music_assistant")
+    )
     builder.add_node("music_assistant", Assistant(music_runnable))
     builder.add_node("music_tools", create_tool_node_with_fallback(music_tools))
     builder.add_edge("enter_music", "music_assistant")
     builder.add_edge("music_tools", "music_assistant")
 
-
     def route_music_assistant(state: State):
+        """
+        Determines the next state transition for the music assistant based on tool calls.
+
+        This function evaluates the latest tool calls in the conversation state and
+        routes the user to the appropriate music assistant workflow.
+
+        Routing logic:
+        - If `tools_condition` returns `END`, the conversation ends.
+        - If any tool call is `CompleteOrEscalate`, transition to "leave_skill".
+        - If all tool calls belong to `music_tools`, transition to "music_tools".
+        - Currently, all other cases also transition to "music_tools" (future-proofing).
+
+        Args:
+            state (State): The current conversation state.
+
+        Returns:
+            str: The name of the next state to transition to.
+        """
         route = tools_condition(state)
         if route == END:
             return END
-        
+
         tool_calls = state["messages"][-1].tool_calls
         did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
-        
+
         if did_cancel:
             return "leave_skill"
 
         safe_toolnames = [t.name for t in music_tools]
-        
+
         # If only safe tools were called, return "music_tools"
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "music_tools"
 
         # Otherwise, introduce differentiation (future-proofing)
         return "music_tools"
-
-  
 
     builder.add_conditional_edges(
         "music_assistant",
@@ -387,7 +541,6 @@ def build_graph() -> StateGraph:
     builder.add_node("leave_skill", pop_dialog_state)
     builder.add_edge("leave_skill", "primary_assistant")
 
-
     # Compile Graph
     graph = builder.compile(
         checkpointer=memory,
@@ -398,10 +551,11 @@ def build_graph() -> StateGraph:
 
 from IPython.display import Image
 
+
 def save_graph_visualization(graph: StateGraph, save_path: str):
     """
     Save the graph visualization as a PNG file.
-    
+
     Parameters:
     ----------
     graph : StateGraph
@@ -417,6 +571,7 @@ def save_graph_visualization(graph: StateGraph, save_path: str):
         print(f"Graph visualization saved successfully at {save_path}")
     except Exception as e:
         print(f"Failed to save graph visualization: {str(e)}")
+
 
 output_path = "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/docs/v2_graph_visualization.png"
 graph = build_graph()

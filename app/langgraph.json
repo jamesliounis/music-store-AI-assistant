@@ -1,10 +1,13 @@
-// langgraph.json
-
 {
-    "graph_name": "MusicStoreCustomerSupportBot",
-    "description": "A customer support chatbot for a music store using LangGraph and LangSmith.",
-    "entry_point": "agent.agent:build_graph",
-    "env_file": ".env",
-    "dependencies": ["agent/requirements.txt"]
+  "dockerfile_lines": [],
+  "graphs": {
+    "agent": "./agent/agent.py:graph"
+  },
+  "env": [
+    "LANGGRAPH_STORAGE_BACKEND"
+  ],
+  "python_version": "3.11",
+  "dependencies": [
+    "./agent"
+  ]
 }
-
