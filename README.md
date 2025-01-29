@@ -144,11 +144,6 @@ pytest tests/
 - **Vector Search for Music**: Approximate matching for artist and track retrieval.
 - **Error Handling & Logging**: Logs errors and tool execution traces for debugging.
 
-## Future Enhancements
-- Expand the music recommendation capabilities.
-- Improve security around customer profile updates.
-- Enhance conversation flow using memory retention.
-
 
 
 
