@@ -9,6 +9,54 @@ This system integrates:
 - **SQL database** for customer and music data retrieval.
 - **Vector search** for approximate music recommendations.
 
+## What can it do?
+
+- **Retrieve Customer Information**:  
+  - Users can ask questions like _"What are my account details?"_ or _"What email do you have on file for me?"_  
+  - The chatbot queries the database using the **customer's ID** and returns the requested details.  
+
+- **Update Customer Profile**:  
+  - Users can request updates, e.g., _"I want to change my email to example@email.com"_ or _"Update my phone number to +123456789."_  
+  - Before making changes, the chatbot asks for confirmation of the user’s current contact details for security.  
+  - It then updates the database and confirms successful modifications.  
+
+- **Find Songs & Albums by an Artist**:  
+  - Users can ask, _"Show me all albums by The Beatles"_ or _"What songs did Queen release?"_  
+  - The chatbot searches the **music database** and retrieves relevant results.  
+
+- **Search for Similar Artists & Tracks**:  
+  - If a user says, _"Find songs similar to Bohemian Rhapsody"_, the chatbot looks for related tracks.  
+  - It uses **vector search** to find **approximate matches**, even if the artist name is misspelled.  
+
+- **Handle Music Recommendations**:  
+  - Users can ask, _"Recommend some rock music"_ or _"What are some famous jazz albums?"_  
+  - The chatbot can provide curated results based on stored data.  
+
+- **Route Queries Between Different Assistants**:  
+  - If a user asks a **customer-related** question (_"Change my email"_) and then a **music-related** one (_"What’s a good playlist?"_), the chatbot dynamically switches between **customer support** and **music recommendation** assistants.  
+
+- **Understand Multi-Turn Conversations**:  
+  - The chatbot maintains context, allowing follow-ups like:  
+    - _"Show me Taylor Swift albums."_ → _"Now show me Ed Sheeran’s."_   
+  - It ensures smooth transitions between different requests.  
+
+- **Detect When a Task is Completed**:  
+  - If a user says, _"That’s all I needed"_, the chatbot gracefully ends the conversation or returns to the **Primary Assistant** for further assistance.  
+
+- **Error Handling & Clarifications**:  
+  - If an invalid request is made (_e.g., updating a non-existent field_), the chatbot provides clear feedback and instructions.  
+  - If it cannot find an artist or song, it suggests alternative searches or asks for clarification.  
+
+## Security and Authentication
+
+The chatbot enforces **security and authentication** measures when handling **sensitive user data** and **profile modifications**. 
+
+For operations involving personal customer details (e.g., retrieving or updating an email or phone number), the chatbot requires **explicit confirmation** from the user by verifying their current contact information before proceeding. Customer information does *not* have to be manually inputted, it is retrieved directly from the State once the graph is initialized. In production, we can imagine the configuration being stored in a secure location in the Cloud and read directly from there. 
+
+Additionally, **sensitive tools**, such as those that modify user profiles, are **restricted and only invoked after authentication checks** using LangGraph's `interrupt` function. 
+
+The system ensures that users **cannot access or modify another customer's information**, and all operations are **logged for monitoring and security compliance**.
+
 ## Architecture
 The assistant operates via a structured state graph, handling different user intents by transitioning between specialized assistants. Below is the architecture visualization:
 
@@ -101,7 +149,7 @@ pytest tests/
 - Improve security around customer profile updates.
 - Enhance conversation flow using memory retention.
 
----
-Developed by James Liounis
+
+
 
 
