@@ -53,12 +53,11 @@ def build_system_message(user_info: dict) -> SystemMessage:
     SystemMessage
         The constructed system message.
     """
-    # first_name = user_info['FirstName', 'Valued Customer')
     customer_id = user_info.get('CustomerID', 'N/A')
     return SystemMessage(
         content=(
             f"You are an AI Chatbot. You are speaking with this customer: {user_info}, "
-            f"a valued customer. Greet them by name. Pay attention to their unique customer ID: {customer_id}."
+            f"a valued customer. You must absolutely greet them by name. Pay attention to their unique customer ID: {customer_id}."
         )
     )
 

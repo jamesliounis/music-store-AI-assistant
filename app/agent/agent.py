@@ -68,6 +68,13 @@ def create_tool_node_with_fallback(tools: list) -> dict:
 
 # Define Assistants and Prompts
 
+extra_customer_security = """
+You will be given the customer data when the chats begins. Do not ask them for any clarification. 
+Do not under any circumstance share customer information of another customer. 
+IMPORTANT: If the customer wants to make any modification to their profile, you must ask them to confirm their current email and phone number.  
+IMPORTANT: If the customer wants to inquire about the information that you have for them on file, you must ask them to confirm their current email and phone number.
+                          """
+
 # Customer Assistance Prompt
 customer_assistance_prompt = ChatPromptTemplate.from_messages(
     [
@@ -125,7 +132,7 @@ music_assistance_prompt = ChatPromptTemplate.from_messages(
 
             When looking up artists and songs, sometimes the exact match may not be found. In such cases, the tools are designed to return 
             information about similar songs or artists. This is intentional and helps provide relevant recommendations.
-            """
+            """ + extra_customer_security
         ),
         ("placeholder", "{messages}"),
     ]
@@ -270,14 +277,19 @@ def build_graph() -> StateGraph:
     # Primary Assistant
     builder.add_node("primary_assistant", Assistant(primary_runnable))
     builder.add_node("primary_assistant_tools", create_tool_node_with_fallback(primary_tools))
-    builder.add_edge("fetch_user_info", "primary_assistant")
+    # builder.add_edge("fetch_user_info", "primary_assistant")
+
+    builder.add_conditional_edges(
+    "fetch_user_info", 
+    route_to_workflow,  # A function dynamically deciding the next step
+    ["primary_assistant", "music_assistant", "customer_assistant"]
+    )
 
 
     def route_primary_assistant(
         state: State,
     ):
         route = tools_condition(state)
-        print("route", route)
         if route == END:
             return END
         tool_calls = state["messages"][-1].tool_calls
@@ -289,17 +301,6 @@ def build_graph() -> StateGraph:
             return "primary_assistant_tools"
         raise ValueError("Invalid route")
 
-
-#     builder.add_conditional_edges(
-#     "primary_assistant",
-#     route_primary_assistant,
-#     [
-#         "enter_customer_profile",
-#         "enter_music",
-#         "primary_assistant_tools",
-#         END,
-#     ],
-# )
 
     builder.add_conditional_edges(
     "primary_assistant",
@@ -324,15 +325,6 @@ def build_graph() -> StateGraph:
     builder.add_edge("customer_safe_tools", "customer_assistant")
     builder.add_edge("customer_sensitive_tools", "customer_assistant")
 
-    # def route_customer_assistant(state: State):
-    #     tool_calls = state["messages"][-1].tool_calls
-    #     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
-    #     if did_cancel:
-    #         return "leave_skill"
-    #     safe_toolnames = [t.name for t in customer_safe_tools]
-    #     if all(tc["name"] in safe_toolnames for tc in tool_calls):
-    #         return "customer_safe_tools"
-    #     return "customer_sensitive_tools"
 
     def route_customer_assistant(
         state: State,
@@ -362,12 +354,6 @@ def build_graph() -> StateGraph:
     builder.add_edge("enter_music", "music_assistant")
     builder.add_edge("music_tools", "music_assistant")
 
-    # def route_music_assistant(state: State):
-    #     tool_calls = state["messages"][-1].tool_calls
-    #     did_cancel = any(tc["name"] == CompleteOrEscalate.__name__ for tc in tool_calls)
-    #     if did_cancel:
-    #         return "leave_skill"
-    #     return "music_tools"
 
     def route_music_assistant(state: State):
         route = tools_condition(state)
@@ -380,11 +366,16 @@ def build_graph() -> StateGraph:
         if did_cancel:
             return "leave_skill"
 
-        # Route directly to music_tools if only one group exists
         safe_toolnames = [t.name for t in music_tools]
+        
+        # If only safe tools were called, return "music_tools"
         if all(tc["name"] in safe_toolnames for tc in tool_calls):
             return "music_tools"
-        return "music_tools"  
+
+        # Otherwise, introduce differentiation (future-proofing)
+        return "music_tools"
+
+  
 
     builder.add_conditional_edges(
         "music_assistant",
@@ -396,7 +387,6 @@ def build_graph() -> StateGraph:
     builder.add_node("leave_skill", pop_dialog_state)
     builder.add_edge("leave_skill", "primary_assistant")
 
-    builder.add_conditional_edges("fetch_user_info", route_to_workflow)
 
     # Compile Graph
     graph = builder.compile(
