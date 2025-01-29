@@ -32,9 +32,6 @@ This system integrates:
   - Users can ask, _"Recommend some rock music"_ or _"What are some famous jazz albums?"_  
   - The chatbot can provide curated results based on stored data.  
 
-- **Route Queries Between Different Assistants**:  
-  - If a user asks a **customer-related** question (_"Change my email"_) and then a **music-related** one (_"What’s a good playlist?"_), the chatbot dynamically switches between **customer support** and **music recommendation** assistants.  
-
 - **Understand Multi-Turn Conversations**:  
   - The chatbot maintains context, allowing follow-ups like:  
     - _"Show me Taylor Swift albums."_ → _"Now show me Ed Sheeran’s."_   
@@ -61,6 +58,12 @@ The system ensures that users **cannot access or modify another customer's infor
 The assistant operates via a structured state graph, handling different user intents by transitioning between specialized assistants. Below is the architecture visualization:
 
 ![Music Store AI Assistant Architecture](docs/visualizations/langgraph_studio.png)
+
+For a detailed explanation of the underlying graph architecture, please refer to the `architecture.md` file. 
+
+```bash
+cd docs && open architecture.md
+```
 
 ### Workflow
 1. **User Message Handling**:
@@ -102,9 +105,6 @@ The assistant operates via a structured state graph, handling different user int
 ├── logs                      # Logging directory
 │   └── langsmith_traces      # LangSmith traces for debugging
 ├── notebooks                 # Jupyter notebooks for development & analysis
-│   ├── chinook.db
-│   ├── config.json
-│   ├── main.py
 │   └── multi_agent_framework.ipynb
 ├── requirements.txt          # Project dependencies
 └── tests                     # Test suite
