@@ -16,17 +16,21 @@ load_dotenv()
 
 logging.basicConfig(
     level=logging.DEBUG,  # Set to DEBUG to capture all levels of logs
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),  # Logs to console
-        logging.FileHandler("/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/app/agent/logs/app.log"),  
-    ]
+        logging.FileHandler(
+            "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/app/agent/logs/app.log"
+        ),
+    ],
 )
 
 logger = logging.getLogger(__name__)
 
 # Initialize Database
-DATABASE_FILE = "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"
+DATABASE_FILE = (
+    "/Users/jamesliounis/Desktop/langchain/music-store-AI-assistant/data/chinook.db"
+)
 DATABASE_URI = f"sqlite:///{os.path.abspath(DATABASE_FILE)}"
 db = SQLDatabase.from_uri(DATABASE_URI)
 
@@ -40,13 +44,14 @@ llm = ChatOpenAI(temperature=TEMPERATURE, streaming=STREAMING, model=MODEL_NAME)
 # Initialize Embeddings
 embeddings = OpenAIEmbeddings()
 
+
 @tool
 def get_customer_info(customer_id: int):
     """
     Retrieve customer information from the database using their unique customer ID.
 
-    This tool queries the 'customers' table in the Chinook database to fetch information 
-    about a specific customer. It is essential to ensure that the customer ID is provided 
+    This tool queries the 'customers' table in the Chinook database to fetch information
+    about a specific customer. It is essential to ensure that the customer ID is provided
     and is valid before invoking this function.
 
     Parameters:
@@ -60,19 +65,21 @@ def get_customer_info(customer_id: int):
     list or dict
         If a customer record is found, returns a list containing one tuple (the row).
         If no record is found or there's an error, returns a dict with an "error" key.
-        
+
     Notes:
     ------
     - ALWAYS confirm that the customer ID is available and valid before calling this function.
-    - If the customer ID is invalid or does not exist, the function will return an appropriate 
+    - If the customer ID is invalid or does not exist, the function will return an appropriate
       error message.
     - Example usage:
         `get_customer_info(1)` will information for the customer with ID 1.
     """
     # Validate that a customer ID is provided
     if not isinstance(customer_id, int) or customer_id <= 0:
-        return {"error": "Invalid customer ID. Please provide a valid positive integer."}
-    
+        return {
+            "error": "Invalid customer ID. Please provide a valid positive integer."
+        }
+
     # Query the database for customer information
     try:
         result = db.run(f"SELECT * FROM customers WHERE CustomerID = {customer_id};")
@@ -82,7 +89,8 @@ def get_customer_info(customer_id: int):
             return {"error": f"No customer found with ID {customer_id}."}
     except Exception as e:
         return {"error": f"An error occurred while fetching customer info: {str(e)}"}
-    
+
+
 @tool
 def get_user_info(config: RunnableConfig) -> dict:
     """
@@ -112,7 +120,9 @@ def get_user_info(config: RunnableConfig) -> dict:
     query = "SELECT * FROM customers WHERE CustomerID = ?"
     cursor.execute(query, (customer_id,))
     row = cursor.fetchone()
-    column_names = [desc[0] for desc in cursor.description] if cursor.description else []
+    column_names = (
+        [desc[0] for desc in cursor.description] if cursor.description else []
+    )
 
     if row:
         # Convert the tuple row to a dictionary
@@ -125,6 +135,7 @@ def get_user_info(config: RunnableConfig) -> dict:
     conn.close()
 
     return result
+
 
 @tool
 def update_customer_profile(customer_id: int, field: str, new_value: str):
@@ -145,25 +156,41 @@ def update_customer_profile(customer_id: int, field: str, new_value: str):
     dict
         A dictionary containing a success message or an error message.
     """
-    print(f"Received inputs - Customer ID: {customer_id}, Field: {field}, New Value: {new_value}")
+    print(
+        f"Received inputs - Customer ID: {customer_id}, Field: {field}, New Value: {new_value}"
+    )
 
     # Validate inputs
     if not isinstance(customer_id, int) or customer_id <= 0:
-        return {"error": "Invalid customer ID. Please provide a valid positive integer."}
+        return {
+            "error": "Invalid customer ID. Please provide a valid positive integer."
+        }
 
     valid_fields = [
-        "FirstName", "LastName", "Company", "Address", "City", "State",
-        "Country", "PostalCode", "Phone", "Fax", "Email", "SupportRepId"
+        "FirstName",
+        "LastName",
+        "Company",
+        "Address",
+        "City",
+        "State",
+        "Country",
+        "PostalCode",
+        "Phone",
+        "Fax",
+        "Email",
+        "SupportRepId",
     ]
     if field not in valid_fields:
-        return {"error": f"Invalid field '{field}'. Allowed fields are: {', '.join(valid_fields)}"}
-    
+        return {
+            "error": f"Invalid field '{field}'. Allowed fields are: {', '.join(valid_fields)}"
+        }
+
     if not isinstance(new_value, str) or len(new_value.strip()) == 0:
         return {"error": "Invalid value. Please provide a valid new value."}
 
     try:
         # Connect to the database directly
-        # conn = sqlite3.connect(DATABASE_URI)  
+        # conn = sqlite3.connect(DATABASE_URI)
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
 
@@ -181,12 +208,18 @@ def update_customer_profile(customer_id: int, field: str, new_value: str):
 
         # Check if the update was successful
         if rows_affected == 0:
-            return {"error": f"No rows updated. Ensure Customer ID {customer_id} exists in the database."}
-        
-        return {"success": f"{field} for customer ID {customer_id} updated to '{new_value}'."}
+            return {
+                "error": f"No rows updated. Ensure Customer ID {customer_id} exists in the database."
+            }
+
+        return {
+            "success": f"{field} for customer ID {customer_id} updated to '{new_value}'."
+        }
 
     except sqlite3.Error as e:
-        error_message = f"An error occurred while updating the field '{field}': {str(e)}"
+        error_message = (
+            f"An error occurred while updating the field '{field}': {str(e)}"
+        )
         print(f"Error details: {error_message}")
         return {"error": error_message}
 
@@ -194,13 +227,14 @@ def update_customer_profile(customer_id: int, field: str, new_value: str):
         print(f"Unhandled exception: {str(e)}")
         return {"error": "An unexpected error occurred."}
 
+
 @tool
 def get_albums_by_artist(artist_name: str):
     """
     Retrieve a list of albums by a given artist or similar artists using approximate matching.
 
-    This tool leverages the `artist_retriever` to find artists whose names closely match 
-    the provided input and then queries the database to get the albums associated with 
+    This tool leverages the `artist_retriever` to find artists whose names closely match
+    the provided input and then queries the database to get the albums associated with
     those artists.
 
     Parameters:
@@ -232,14 +266,16 @@ def get_albums_by_artist(artist_name: str):
     try:
         # Find relevant artists using the retriever
         docs = artist_retriever.get_relevant_documents(artist_name)
-        
+
         # Check if any artists were found
         if not docs:
-            return {"error": f"No artists found matching '{artist_name}'. Please try another name."}
-        
+            return {
+                "error": f"No artists found matching '{artist_name}'. Please try another name."
+            }
+
         # Extract artist IDs from the retrieved documents
-        artist_ids = ", ".join([str(d.metadata['ArtistId']) for d in docs])
-        
+        artist_ids = ", ".join([str(d.metadata["ArtistId"]) for d in docs])
+
         # Query the database for albums by the retrieved artists
         query = f"""
         SELECT 
@@ -255,31 +291,62 @@ def get_albums_by_artist(artist_name: str):
             albums.ArtistId IN ({artist_ids});
         """
         result = db.run(query, include_columns=True)
-        
+
         # Check if any albums were found
         if not result:
-            return {"message": f"No albums found for artists similar to '{artist_name}'."}
-        
+            return {
+                "message": f"No albums found for artists similar to '{artist_name}'."
+            }
+
         return result
 
     except Exception as e:
         return {"error": f"An error occurred while fetching albums: {str(e)}"}
 
+
 @tool
 def get_tracks_by_artist(artist_name: str):
     """
-    Retrieve a list of tracks by a given artist or similar artists using approximate matching.
+    Retrieves a list of tracks by a given artist or similar artists using approximate matching.
+
+    This function leverages an artist retriever to find relevant artist IDs based on the
+    input artist name. It then queries the database to fetch tracks associated with
+    the identified artists.
+
+    Workflow:
+    - Uses `artist_retriever` to retrieve similar artist IDs based on `artist_name`.
+    - Constructs an SQL query to fetch track names and corresponding artists.
+    - Executes the query and returns the results.
+
+    Args:
+        artist_name (str): The name of the artist whose tracks should be retrieved.
+
+    Returns:
+        dict:
+            - If successful, returns a dictionary containing track and artist details.
+            - If no tracks are found, returns a message indicating no results.
+            - If an error occurs, returns an error message.
+
+    Raises:
+        Exception: Catches and returns any errors encountered during retrieval or querying.
+
+    Notes:
+        - The query is case-insensitive.
+        - If `artist_retriever` is not initialized, an error message is returned.
+        - Uses approximate matching to retrieve tracks by similar artists.
     """
     # Validate retriever initialization
     if artist_retriever is None:
-        return {"error": "Artist retriever is not initialized. Please ensure the retrievers are set up."}
+        return {
+            "error": "Artist retriever is not initialized. Please ensure the retrievers are set up."
+        }
 
     try:
         # Retrieve relevant artists using the retriever
         docs = artist_retriever.get_relevant_documents(artist_name)
-    
+
         artist_ids = ", ".join([str(doc.metadata["ArtistId"]) for doc in docs])
-        
+
         # Query the database for tracks by the retrieved artists (case-insensitive)
         query = f"""
         SELECT 
@@ -300,21 +367,24 @@ def get_tracks_by_artist(artist_name: str):
             OR albums.ArtistId IN ({artist_ids});
         """
         result = db.run(query, include_columns=True)
-        
+
         if not result:
-            return {"message": f"No tracks found for artists similar to '{artist_name}'."}
-        
+            return {
+                "message": f"No tracks found for artists similar to '{artist_name}'."
+            }
+
         return result
 
     except Exception as e:
         return {"error": f"An error occurred while fetching tracks: {str(e)}"}
+
 
 @tool
 def check_for_songs(song_title: str):
     """
     Search for songs by title using approximate matching.
 
-    This tool uses the `song_retriever` to find songs whose titles closely match 
+    This tool uses the `song_retriever` to find songs whose titles closely match
     the provided input. It returns relevant information about the songs.
 
     Parameters:
@@ -334,22 +404,25 @@ def check_for_songs(song_title: str):
     try:
         # Retrieve relevant songs using the retriever
         songs = song_retriever.get_relevant_documents(song_title)
-        
+
         # Check if any songs were found
         if not songs:
-            return {"message": f"No songs found matching '{song_title}'. Please try another title."}
-        
+            return {
+                "message": f"No songs found matching '{song_title}'. Please try another title."
+            }
+
         return songs
 
     except Exception as e:
         return {"error": f"An error occurred while searching for songs: {str(e)}"}
 
+
 def create_music_retrievers(database):
     """
     Create retrievers for looking up artists and tracks using approximate matching.
 
-    This function uses a vector-based search mechanism to create retrievers for artists and 
-    track names from the Chinook database. It enables efficient and error-tolerant lookups 
+    This function uses a vector-based search mechanism to create retrievers for artists and
+    track names from the Chinook database. It enables efficient and error-tolerant lookups
     of artist and track names without requiring exact spelling.
 
     Parameters:
@@ -366,10 +439,10 @@ def create_music_retrievers(database):
 
     Notes:
     ------
-    - The function queries the database for artists and tracks, retrieves their names, 
+    - The function queries the database for artists and tracks, retrieves their names,
       and indexes them into separate retrievers.
     - OpenAI embeddings are used for generating vector representations of the names.
-    - The retrievers allow for approximate matching, making it user-friendly for misspelled 
+    - The retrievers allow for approximate matching, making it user-friendly for misspelled
       or partially remembered artist/track names.
 
     Example Usage:
@@ -389,20 +462,16 @@ def create_music_retrievers(database):
             raise ValueError("No tracks found in the database.")
 
         # Extract artist and track names for embedding
-        artist_names = [artist['Name'] for artist in artists]
-        track_names = [track['Name'] for track in songs]
+        artist_names = [artist["Name"] for artist in artists]
+        track_names = [track["Name"] for track in songs]
 
         # Create retrievers for artists and songs
         artist_retriever = SKLearnVectorStore.from_texts(
-            texts=artist_names,
-            embedding=OpenAIEmbeddings(),
-            metadatas=artists
+            texts=artist_names, embedding=OpenAIEmbeddings(), metadatas=artists
         ).as_retriever()
 
         song_retriever = SKLearnVectorStore.from_texts(
-            texts=track_names,
-            embedding=OpenAIEmbeddings(),
-            metadatas=songs
+            texts=track_names, embedding=OpenAIEmbeddings(), metadatas=songs
         ).as_retriever()
 
         return artist_retriever, song_retriever
@@ -410,14 +479,36 @@ def create_music_retrievers(database):
     except Exception as e:
         raise RuntimeError(f"Error creating music retrievers: {str(e)}")
 
+
 # Define global variables
 artist_retriever = None
 song_retriever = None
 
+
 def initialize_retrievers(database):
+    """
+    Initializes global retrievers for music-related queries.
+
+    This function sets up two global retrievers:
+    - `artist_retriever`: Used for retrieving artists based on approximate matching.
+    - `song_retriever`: Used for retrieving songs based on relevant queries.
+
+    The retrievers are created using the `create_music_retrievers` function,
+    which configures them based on the provided database.
+
+    Args:
+        database: The database connection object used to initialize retrievers.
+
+    Returns:
+        None
+
+    Notes:
+        - This function must be called once during setup before any retrieval operations.
+        - It modifies the global `artist_retriever` and `song_retriever` variables.
+    """
     global artist_retriever, song_retriever
     artist_retriever, song_retriever = create_music_retrievers(database)
 
+
 # Call this once during setup
 initialize_retrievers(db)
-
