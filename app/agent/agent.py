@@ -113,7 +113,7 @@ customer_assistance_prompt = ChatPromptTemplate.from_messages(
             - If the user requests to update a field that is invalid or unavailable, inform them politely of the valid fields:
             - Allowed fields: `FirstName`, `LastName`, `Company`, `Address`, `City`, `State`, `Country`, `PostalCode`, `Phone`, `Fax`, `Email`, and `SupportRepId`.
             - If you are unable to assist with the user's request, politely suggest they contact customer support.
-            """
+            """ + extra_customer_security
         ),
         ("placeholder", "{messages}"),
     ]
@@ -132,7 +132,7 @@ music_assistance_prompt = ChatPromptTemplate.from_messages(
 
             When looking up artists and songs, sometimes the exact match may not be found. In such cases, the tools are designed to return 
             information about similar songs or artists. This is intentional and helps provide relevant recommendations.
-            """ + extra_customer_security
+            """ 
         ),
         ("placeholder", "{messages}"),
     ]

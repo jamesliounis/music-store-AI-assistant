@@ -163,7 +163,8 @@ def update_customer_profile(customer_id: int, field: str, new_value: str):
 
     try:
         # Connect to the database directly
-        conn = sqlite3.connect(DATABASE_URI)  
+        # conn = sqlite3.connect(DATABASE_URI)  
+        conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
 
         # Parameterized query

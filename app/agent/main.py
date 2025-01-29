@@ -53,7 +53,7 @@ def build_system_message(user_info: dict) -> SystemMessage:
     SystemMessage
         The constructed system message.
     """
-    customer_id = user_info.get('CustomerID', 'N/A')
+    customer_id = user_info.get('CustomerId', 'N/A')
     return SystemMessage(
         content=(
             f"You are an AI Chatbot. You are speaking with this customer: {user_info}, "
@@ -79,7 +79,7 @@ def print_latest_event(events, user_input=None):
     if user_input:
         print(f"YOU: {user_input}")
     if latest_message:
-        print(latest_message) 
+        print(latest_message)
 
 def main():
     """
@@ -126,9 +126,18 @@ def main():
         # Insert the system message and print greeting
         init_result = graph.invoke({"messages": [system_msg]}, config_data)
         logger.info("System message inserted into the graph.")
+        
 
+        # ✅ Correctly extract messages and ensure AI response is printed
         if isinstance(init_result, dict) and "messages" in init_result:
-            print_latest_event(init_result["messages"])
+            messages = init_result["messages"]
+            if messages:  # Ensure messages list is not empty
+                print_latest_event([{"messages": messages}])  # Wrap in expected format
+            else:
+                logger.warning("AI did not generate any messages.")
+        else:
+            logger.error(f"Unexpected init_result format: {init_result}")  # Debugging help
+
 
 
         # Start the interactive chat loop
