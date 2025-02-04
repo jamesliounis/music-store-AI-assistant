@@ -1,4 +1,4 @@
-# Music Store AI Assistant
+# LanggGraph: Music Store AI Assistant
 
 ## Overview
 The **Music Store AI Assistant** is a multi-agent conversational system designed to assist customers with music-related queries and profile management. Built using **LangGraph**, **LangChain**, and **OpenAI models**, it leverages a structured state graph to dynamically route user interactions between a **primary assistant**, a **customer profile assistant**, and a **music recommendation assistant**.
